@@ -1,0 +1,10 @@
+name: Call a reusable workflow
+
+on: [push]
+
+jobs:
+  call-workflow-in-local-repo:
+    uses: ./.github/workflows/ci.yml
+    with:
+      module_name: reusable_workflows
+      composer_name: digitalutsc/reusable_workflows
