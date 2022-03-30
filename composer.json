@@ -1,0 +1,6 @@
+{
+  "name": "digitalutsc/passing_tests",
+  "type": "drupal-module",
+  "description": "Drupal module containing only tests that pass.",
+  "keywords": ["Drupal"]
+}

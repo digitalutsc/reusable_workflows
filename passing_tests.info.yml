@@ -1,0 +1,6 @@
+name: passing_tests
+type: module
+description: Tests that always pass.
+package: Custom
+core: 8.x
+core_version_requirement: ^8 || ^9
