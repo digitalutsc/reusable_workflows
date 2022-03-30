@@ -12,13 +12,6 @@ use Drupal\Tests\UnitTestCase;
 class PassingUnitTest extends UnitTestCase {
 
   /**
-   * {@inheritdoc}
-   */
-  protected function setUp(): void {
-    parent::setUp();
-  }
-
-  /**
    * Always passing unit test.
    */
   public function testSomething() {

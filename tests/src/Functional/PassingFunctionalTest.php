@@ -22,13 +22,6 @@ class PassingFunctionalTest extends BrowserTestBase {
   protected static $modules = ['passing_tests'];
 
   /**
-   * {@inheritdoc}
-   */
-  protected function setUp(): void {
-    parent::setUp();
-  }
-
-  /**
    * Always passing functional test.
    */
   public function testSomething() {

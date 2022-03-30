@@ -17,12 +17,6 @@ class PassingKernelTest extends KernelTestBase {
   protected static $modules = ['passing_tests'];
 
   /**
-   * {@inheritdoc}
-   */
-  protected function setUp(): void {
-    parent::setUp();
-  }
-  /**
    * Always passing kernel test.
    */
   public function testSomething() {
