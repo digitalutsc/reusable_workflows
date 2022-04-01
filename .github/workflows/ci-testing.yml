@@ -101,7 +101,7 @@ jobs:
           echo "DRUPAL_VERSION=${{ matrix.drupal-version }}" >> $GITHUB_ENV
           echo "SCRIPT_DIR=$GITHUB_WORKSPACE/islandora_ci" >> $GITHUB_ENV
           echo "DRUPAL_DIR=/opt/drupal" >> $GITHUB_ENV
-          echo "PHPUNIT_FILE=$GITHUB_WORKSPACE/build_dir/phpunit.xml" >> $GITHUB_ENV
+          echo "PHPUNIT_FILE=$GITHUB_WORKSPACE/build_dir/${{ inputs.phpunit_path }}" >> $GITHUB_ENV
 
       - name: Set default phpunit file
         if: inputs.phpunit_path == ''
