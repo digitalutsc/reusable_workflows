@@ -80,9 +80,9 @@ jobs:
         uses: jacobtomlinson/gha-find-replace@v2
         with:
           find: "passing_tests"
-          replace: ${{ inputs.module_name }}
+          replace: "${{ inputs.module_name }}"
           regex: false
-          include: $GITHUB_WORKSPACE/reusable_workflows/phpunit.xml
+          include: "reusable_workflows/phpunit.xml"
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
