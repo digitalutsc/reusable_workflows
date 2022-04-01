@@ -69,14 +69,14 @@ jobs:
           path: islandora_ci
 
       - name: Checkout reusable_workflows
-        if: inputs.phpunit_path == ""
+        if: inputs.phpunit_path == ''
         uses: actions/checkout@v2
         with:
           repository: digitalutsc/reusable_workflows
           path: reusable_workflows
 
       - name: Replace module name
-        if: inputs.phpunit_path == ""
+        if: inputs.phpunit_path == ''
         uses: jacobtomlinson/gha-find-replace@v2
         with:
           find: "passing_tests"
@@ -104,7 +104,7 @@ jobs:
           echo "PHPUNIT_FILE=$GITHUB_WORKSPACE/build_dir/phpunit.xml" >> $GITHUB_ENV
 
       - name: Set default phpunit file
-        if: inputs.phpunit_path == ""
+        if: inputs.phpunit_path == ''
         run: echo "PHPUNIT_FILE=$GITHUB_WORKSPACE/reusable_workflows/phpunit.xml" >> $GITHUB_ENV
 
       - name: Cache Composer dependencies
