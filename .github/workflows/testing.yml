@@ -1,0 +1,10 @@
+name: Call a reusable workflow
+
+on: [push]
+
+jobs:
+  call-workflow-in-local-repo:
+    uses: ./.github/workflows/ci-testing.yml
+    with:
+      module_name: passing_tests
+      composer_name: digitalutsc/passing_tests
