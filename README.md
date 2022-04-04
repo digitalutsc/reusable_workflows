@@ -11,8 +11,8 @@ Please refer to [Github's official documentation for reusable workflows](https:/
 This workflow runs PHP-CS, Drupal Check, and any tests written for an individual module on various versions of Drupal and PHP.
 
 #### Requirements
-* `phpunit.xml` file (See this repository for an example)
 * `composer.json` file
+* If using the default `phpunit.xml`, then tests must be located under `./tests/src/Unit`, `./tests/src/Functional`, or `./tests/src/Kernel`.
 
 #### Acknowledgements
 `ci-testing.yml` is based on Islandora's implementation of similar tests.
