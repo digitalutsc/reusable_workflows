@@ -150,6 +150,7 @@ jobs:
           drupal-check --drupal-root $DRUPAL_DIR $GITHUB_WORKSPACE/build_dir
 
       - name: PHPUNIT tests
+        if: inputs.test_suite != ''
         run: |
           cd $DRUPAL_DIR/web/core
           $DRUPAL_DIR/vendor/bin/phpunit --verbose --testsuite "${{ inputs.test_suite }}"
