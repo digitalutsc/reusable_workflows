@@ -10,6 +10,12 @@ Please refer to [Github's official documentation for reusable workflows](https:/
 ### ci-testing.yml
 This workflow runs PHP-CS, Drupal Check, and any tests written for an individual module on various versions of Drupal and PHP.
 
+#### Parameters
+* `module_name` (Required) Machine name of the module.
+* `composer_name` (Required) Module name given by composer (e.g. `drupal/token`).
+* `test_suite` (Optional) Comma-separated list of test suites to run. Defaults to running unit, kernel, and functional tests. If empty, no test suites are run. 
+* `phpunit_path` (Optional) Path to custom PHPUnit file in calling repository. If empty, uses the phphunit.xml from this repository. 
+
 #### Requirements
 * `composer.json` file
 * If using the default `phpunit.xml`, then tests must be located under `./tests/src/Unit`, `./tests/src/Functional`, or `./tests/src/Kernel`.
