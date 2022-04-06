@@ -7,4 +7,4 @@ jobs:
     uses: ./.github/workflows/ci-testing.yml
     with:
       module_name: passing_tests
-      composer_name: digitalutsc/different_name
+      composer_name: digitalutsc/passing_tests
