@@ -75,12 +75,20 @@ jobs:
           repository: digitalutsc/reusable_workflows
           path: reusable_workflows
 
+      - name: Get folder name
+        if: inputs.phpunit_path == ''
+        uses: jungwinter/split@v2
+        id: split
+        with:
+          msg: ${{ inputs.composer_name }}
+          separator: /
+
       - name: Replace module name
         if: inputs.phpunit_path == ''
         uses: jacobtomlinson/gha-find-replace@v2
         with:
           find: "passing_tests"
-          replace: "${{ inputs.module_name }}"
+          replace: "${{ steps.split.outputs._1 }}"
           regex: false
           include: "reusable_workflows/phpunit.xml"
 
