@@ -31,15 +31,11 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        php-versions: ["7.4", "8.1"]
-        drupal-version: ["9.4.x", "9.5.x-dev"]
+        php-versions: ["8.1"]
+        drupal-version: ["10.1.x"]
         mysql: ["5.7"]
         experimental: [false]
-        include:
-          - php-versions: 8.1
-            drupal-version: 10.1.x-dev
-            mysql: 5.7
-            experimental: true
+
 
     name: PHP ${{ matrix.php-versions }} | drupal ${{ matrix.drupal-version }} | mysql ${{ matrix.mysql }}
 
