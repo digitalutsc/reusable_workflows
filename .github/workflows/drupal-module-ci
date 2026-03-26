@@ -1,0 +1,52 @@
+name: Drupal Module CI
+
+on:
+  workflow_call:
+    inputs:
+      module_name:
+        required: true
+        type: string
+        description: "The machine name of the module (e.g., citation_select)"
+      install_chromedriver:
+        required: true
+        type: boolean
+        description: "Whether to start the Chromedriver container for Functional tests"
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    continue-on-error: false
+    strategy:
+      fail-fast: false
+      matrix:
+        php_versions: ["8.3", "8.4"]
+        drupal_versions: ["10.6", "11.3"]
+
+    name: PHP ${{ matrix.php_versions }} | Drupal ${{ matrix.drupal_versions }}
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v5
+
+      - name: Create docker network
+        run: docker network create ci-default
+
+      - name: Start chromedriver
+        if: ${{ inputs.install_chromedriver }}
+        run: |
+          docker run -d \
+            --name chromedriver \
+            --network ci-default \
+            drupalci/webdriver-chromedriver:production \
+            chromedriver --log-path=/dev/null --verbose --allowed-ips= --allowed-origins=*
+
+      - name: PHPUnit tests
+        run: |
+          docker run \
+            --rm \
+            --name drupal \
+            --hostname drupal \
+            --volume $(pwd):/var/www/drupal/web/modules/contrib/${{ inputs.module_name }}:ro \
+            --env ENABLE_MODULES=${{ inputs.module_name }} \
+            --network ci-default \
+            ghcr.io/islandora/ci:${{ matrix.drupal_versions }}-php${{ matrix.php_versions }}
