@@ -28,7 +28,7 @@ jobs:
           - drupal_versions: "11.3"
             facets_versions: "^2"
 
-    name: PHP ${{ matrix.php_versions }} | Drupal ${{ matrix.drupal_versions }} | Facets ${{ matrix.facets_versions }}
+    name: PHP ${{ matrix.php_versions }} | Drupal ${{ matrix.drupal_versions }}
 
     steps:
       - name: Checkout code
