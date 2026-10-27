@@ -46,6 +46,13 @@ jobs:
             drupalci/webdriver-chromedriver:production \
             chromedriver --log-path=/dev/null --verbose --allowed-ips= --allowed-origins=*
 
+      - name: Constrain facets to matrix version
+        run: |
+          jq --arg v "${{ matrix.facets_versions }}" \
+            'if .require["drupal/facets"] then .require["drupal/facets"] = $v else . end' \
+            composer.json > composer.tmp && mv composer.tmp composer.json
+          grep -n "drupal/facets" composer.json
+          
       - name: PHPUnit tests
         run: |
           docker run \
