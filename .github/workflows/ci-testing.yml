@@ -69,6 +69,7 @@ jobs:
         uses: actions/checkout@v2
         with:
           repository: digitalutsc/reusable_workflows
+          ref: omarhxk-patch-1
           path: reusable_workflows
 
       - name: Get folder name
