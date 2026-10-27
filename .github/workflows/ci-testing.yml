@@ -132,7 +132,7 @@ jobs:
           cd $DRUPAL_DIR
           composer config repositories.local path "$GITHUB_WORKSPACE/build_dir"
           composer config minimum-stability dev
-          composer require "${{ inputs.composer_name }}"
+          composer require -W "${{ inputs.composer_name }}"
 
       - name: Install modules
         run: |
