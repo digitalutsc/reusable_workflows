@@ -134,15 +134,6 @@ jobs:
           composer config repositories.local path "$GITHUB_WORKSPACE/build_dir"
           composer config minimum-stability dev
           composer require -W "${{ inputs.composer_name }}"
-
-      - name: Debug passing_tests
-        run: |
-          cd $DRUPAL_DIR
-          grep "const VERSION" web/core/lib/Drupal.php
-          find . -name "passing_tests.info.yml" -not -path "*/node_modules/*" -exec sh -c 'echo "== $1"; cat "$1"' _ {} \;
-          echo "== build_dir copy"
-          cat $GITHUB_WORKSPACE/build_dir/passing_tests.info.yml
-          ls -la web/modules/contrib web/modules/custom 2>/dev/null || true
           
       - name: Install modules
         run: |
