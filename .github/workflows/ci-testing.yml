@@ -89,7 +89,7 @@ jobs:
           find: "passing_tests"
           replace: "${{ steps.split.outputs._1 }}"
           regex: false
-          include: "reusable_workflows/phpunit.xml"
+          include: "reusable_workflows/legacy/phpunit.xml"
 
       - name: Setup PHP
         uses: shivammathur/setup-php@v2
@@ -112,7 +112,7 @@ jobs:
 
       - name: Set default phpunit file
         if: inputs.phpunit_path == ''
-        run: echo "PHPUNIT_FILE=$GITHUB_WORKSPACE/reusable_workflows/phpunit.xml" >> $GITHUB_ENV
+        run: echo "PHPUNIT_FILE=$GITHUB_WORKSPACE/reusable_workflows/legacy/phpunit.xml" >> $GITHUB_ENV
 
       - name: Cache Composer dependencies
         uses: actions/cache@v2
