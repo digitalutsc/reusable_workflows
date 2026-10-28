@@ -8,25 +8,55 @@ on:
         type: string
         description: "The machine name of the module (e.g., citation_select)"
       install_chromedriver:
-        required: true
+        required: false
         type: boolean
-        description: "Whether to start the Chromedriver container for Functional tests"
+        default: false
+        description: "Start the Chromedriver container. Only FunctionalJavascript tests need it."
+      drupal_versions:
+        required: false
+        type: string
+        default: '["10.6", "11.3"]'
+        description: 'JSON array of Drupal minor versions; each needs a ghcr.io/islandora/ci tag (e.g., ''["11.3"]'')'
+      php_versions:
+        required: false
+        type: string
+        default: '["8.3", "8.4"]'
+        description: 'JSON array of PHP versions; each needs a ghcr.io/islandora/ci tag (e.g., ''["8.4"]'')'
+      timeout_minutes:
+        required: false
+        type: number
+        default: 30
+        description: "Per-job timeout, so a hung test can't hold a runner for the 6-hour default"
+
+# The job only reads the repository; this caps whatever the caller grants.
+permissions:
+  contents: read
+
+# The group name is specific to this workflow so it can't collide with a
+# concurrency group the caller defines (identical groups deadlock). Only PR
+# runs are cancelled; every push to a branch still gets a result.
+concurrency:
+  group: islandora-module-ci-${{ github.repository }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
-    runs-on: ubuntu-latest
-    continue-on-error: false
+    runs-on: ubuntu-24.04
+    timeout-minutes: ${{ inputs.timeout_minutes }}
     strategy:
       fail-fast: false
       matrix:
-        php_versions: ["8.3", "8.4"]
-        drupal_versions: ["10.6", "11.3"]
+        php_versions: ${{ fromJSON(inputs.php_versions) }}
+        drupal_versions: ${{ fromJSON(inputs.drupal_versions) }}
 
     name: PHP ${{ matrix.php_versions }} | Drupal ${{ matrix.drupal_versions }}
 
+    env:
+      ENABLE_MODULES: ${{ inputs.module_name }}
+
     steps:
       - name: Checkout code
-        uses: actions/checkout@v5
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
 
       - name: Create docker network
         run: docker network create ci-default
@@ -46,7 +76,7 @@ jobs:
             --rm \
             --name drupal \
             --hostname drupal \
-            --volume $(pwd):/var/www/drupal/web/modules/contrib/${{ inputs.module_name }}:ro \
-            --env ENABLE_MODULES=${{ inputs.module_name }} \
+            --volume "$PWD:/var/www/drupal/web/modules/contrib/$ENABLE_MODULES:ro" \
+            --env ENABLE_MODULES \
             --network ci-default \
-            ghcr.io/islandora/ci:${{ matrix.drupal_versions }}-php${{ matrix.php_versions }}
+            "ghcr.io/islandora/ci:${{ matrix.drupal_versions }}-php${{ matrix.php_versions }}"

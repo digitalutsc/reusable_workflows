@@ -1,10 +1,19 @@
-name: Call a reusable workflow
+# Self-test: runs the reusable workflows against the passing_tests module at the
+# repository root, so a change to them is exercised before callers pick it up.
+name: Self-test
 
-on: [push]
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+
+permissions:
+  contents: read
 
 jobs:
-  call-workflow-in-local-repo:
-    uses: ./.github/workflows/ci-testing.yml
+  islandora-module-ci:
+    uses: ./.github/workflows/islandora-module-ci.yml
     with:
       module_name: passing_tests
-      composer_name: digitalutsc/passing_tests

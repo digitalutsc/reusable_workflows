@@ -1,4 +1,7 @@
-# This is a basic workflow to help you get started with Actions
+# DEPRECATED: use islandora-module-ci.yml. This workflow is no longer
+# maintained or self-tested: it targets PHP 8.1 / Drupal 10.1 / MySQL 5.7 and
+# uses actions/cache@v2, which GitHub has retired. Kept only so any remaining
+# callers fail visibly rather than with a missing-workflow error.
 # Based on https://github.com/Islandora/islandora/blob/c1aa0a5f2f593440b607b73245e103a9b6626371/.github/workflows/build-2.x.yml
 
 name: CI
