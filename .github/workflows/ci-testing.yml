@@ -159,4 +159,4 @@ jobs:
         if: inputs.test_suite != ''
         run: |
           cd $DRUPAL_DIR/web/core
-          $DRUPAL_DIR/vendor/bin/phpunit --verbose --testsuite "${{ inputs.test_suite }}"
+          $DRUPAL_DIR/vendor/bin/phpunit --testsuite "${{ inputs.test_suite }}"
