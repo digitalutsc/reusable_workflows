@@ -1,0 +1,64 @@
+# Weekly: runs islandora-module-ci.yml from this branch against the default
+# branch of every module that uses it, so a new Drupal or PHP release is tested
+# even in module repos nobody has pushed to. Modules' own ci.yml files only run
+# on push and pull request.
+#
+# To add or remove a module, edit the list below. `ref` is the branch the
+# module releases from (its default branch).
+name: Weekly module CI
+
+on:
+  schedule:
+    - cron: '17 6 * * 1' # Mondays 06:17 UTC
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  module:
+    name: ${{ matrix.module }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - { module: ableplayer_extend, repository: digitalutsc/ableplayer_extend, ref: main, chromedriver: false }
+          - { module: advanced_search_default_sort_override, repository: digitalutsc/advanced_search_default_sort_override, ref: main, chromedriver: false }
+          - { module: advanced_search_tips, repository: digitalutsc/advanced_search_tips, ref: main, chromedriver: true }
+          - { module: advancedqueue_runner, repository: digitalutsc/advanced-queue-runner, ref: 2.x, chromedriver: true }
+          - { module: archive_list_contents, repository: digitalutsc/archive_list_contents, ref: 2.x, chromedriver: false }
+          - { module: assign_calc, repository: digitalutsc/assign_calc, ref: utsc, chromedriver: true }
+          - { module: citation_select, repository: digitalutsc/citation_select, ref: 2.x, chromedriver: true }
+          - { module: facets_year_range, repository: digitalutsc/facets_year_range, ref: main, chromedriver: true }
+          - { module: fullcalendar_solr, repository: digitalutsc/fullcalendar_solr, ref: 1.x, chromedriver: true }
+          - { module: group_concat, repository: digitalutsc/group_concat, ref: main, chromedriver: false }
+          - { module: group_solr, repository: digitalutsc/group_solr, ref: main, chromedriver: true }
+          - { module: hero_banner, repository: digitalutsc/hero_banner, ref: main, chromedriver: true }
+          - { module: islandora_breadcrumbs, repository: digitalutsc/islandora_breadcrumbs, ref: main, chromedriver: false }
+          - { module: islandora_group, repository: digitalutsc/islandora_group, ref: 2.x, chromedriver: true }
+          - { module: islandora_iiif, repository: digitalutsc/islandora_iiif, ref: 1.x, chromedriver: false }
+          - { module: islandora_iiif_hocr_extend, repository: digitalutsc/islandora_iiif_hocr_extend, ref: main, chromedriver: false }
+          - { module: islandora_object_thumbnail, repository: digitalutsc/islandora_object_thumbnail, ref: main, chromedriver: true }
+          - { module: islandora_search_processor, repository: digitalutsc/islandora_search_processor, ref: main, chromedriver: true }
+          - { module: islandora_site_name, repository: digitalutsc/islandora_site_name, ref: main, chromedriver: false }
+          - { module: language_switcher_popup, repository: digitalutsc/language_switcher_popup, ref: main, chromedriver: false }
+          - { module: leafletjs, repository: digitalutsc/leafletjs, ref: main, chromedriver: true }
+          - { module: media_fits, repository: digitalutsc/media_fits, ref: main, chromedriver: true }
+          - { module: media_thumbnails_jp2, repository: digitalutsc/media_thumbnails_jp2, ref: main, chromedriver: false }
+          - { module: media_thumbnails_tiff, repository: digitalutsc/media_thumbnails_tiff, ref: master, chromedriver: false }
+          - { module: private_files_adapter, repository: digitalutsc/private_files_adapter, ref: main, chromedriver: true }
+          - { module: recogito_integration, repository: digitalutsc/recogito_integration, ref: 2.x, chromedriver: true }
+          - { module: relation_extend, repository: digitalutsc/relation_extend, ref: main, chromedriver: false }
+          - { module: replaywebpage, repository: digitalutsc/replaywebpage, ref: 1.x, chromedriver: true }
+          - { module: rest_translation_util, repository: digitalutsc/rest_translation_util, ref: main, chromedriver: false }
+          - { module: serve_iiif_file, repository: digitalutsc/serve_iiif_file, ref: main, chromedriver: true }
+          - { module: static_metadata_records, repository: digitalutsc/static_metadata_records, ref: main, chromedriver: true }
+          - { module: termwithuri_condition, repository: digitalutsc/termwithuri_condition, ref: main, chromedriver: false }
+          - { module: triplestore_indexer, repository: digitalutsc/triplestore_indexer, ref: 2.x, chromedriver: true }
+          - { module: xmlsitemap_extend, repository: digitalutsc/xmlsitemap_extend, ref: main, chromedriver: false }
+    uses: ./.github/workflows/islandora-module-ci.yml
+    with:
+      module_name: ${{ matrix.module }}
+      repository: ${{ matrix.repository }}
+      ref: ${{ matrix.ref }}
+      install_chromedriver: ${{ matrix.chromedriver }}

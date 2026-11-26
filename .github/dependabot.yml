@@ -1,0 +1,12 @@
+# Keeps the pinned actions in .github/workflows (e.g. actions/checkout) current
+# through pull requests. A merged update also counts as repository activity,
+# which keeps GitHub from disabling the weekly schedule after 60 idle days.
+version: 2
+updates:
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    groups:
+      github-actions:
+        patterns: ['*']
