@@ -7,7 +7,8 @@ name: Islandora Module CI
 #     release. A major with no stable release yet (the next major) gets its
 #     newest branch, non-blocking (`include_next_major`)
 #   - PHP: the lowest and the highest version that ghcr.io/islandora/ci is
-#     built for and that the minor's core/composer.json allows
+#     built for, from the minor's minimum (core/composer.json) up to the newest
+#     PHP that Drupal core's own CI tests on that branch (.gitlab-ci.yml)
 #   - image: ghcr.io/islandora/ci:<minor>-php<php>; when Islandora hasn't
 #     published that tag yet, the job builds it from Islandora's Dockerfile
 
@@ -120,9 +121,16 @@ jobs:
             if [ -n "$PHP_VERSIONS" ]; then
               phps=$(jq -r '.[]' <<<"$PHP_VERSIONS")
             else
+              # Lowest: the minor's composer.json. Highest: the newest PHP in
+              # core's own CI jobs for the branch ("... PHP 8.4 MySQL ..."), since
+              # composer.json has no upper bound (Drupal 10 breaks on PHP 8.5).
               min_php=$(fetch "https://git.drupalcode.org/project/drupal/-/raw/${minor}.x/core/composer.json" \
                 | jq -r '.require.php' | grep -oE '[0-9]+\.[0-9]+' | head -n1)
-              allowed=$(awk -v m="$min_php" 'BEGIN{split(m,a,".")} {split($0,b,"."); if (b[1]>a[1] || (b[1]==a[1] && b[2]>=a[2])) print}' <<<"$image_php")
+              max_php=$(fetch "https://git.drupalcode.org/project/drupal/-/raw/${minor}.x/.gitlab-ci.yml" \
+                | grep -oE "^'[^']*PHP [0-9]+\.[0-9]+" | grep -oE '[0-9]+\.[0-9]+$' | sort -uV | tail -n1 || true)
+              allowed=$(awk -v lo="$min_php" -v hi="${max_php:-99.99}" '
+                function v(x, p) { split(x, p, "."); return p[1] * 1000 + p[2] }
+                v($0) >= v(lo) && v($0) <= v(hi)' <<<"$image_php")
               [ -n "$allowed" ] || allowed=$min_php
               phps=$( (head -n1 <<<"$allowed"; tail -n1 <<<"$allowed") | sort -uV )
             fi
@@ -130,9 +138,13 @@ jobs:
               tag="${minor}-php${php}"
               build=true
               if grep -qx "$tag" <<<"$tags"; then build=false; fi
-              rows+=("$(jq -cn --arg d "$minor" --arg p "$php" --arg i "$image:$tag" \
+              # Composer constraint for building the image: "12.0.x" only matches
+              # stable releases, so a major without one needs its dev branch.
+              constraint="${minor}.x"
+              if [ "$experimental" = true ]; then constraint="${minor}.x-dev"; fi
+              rows+=("$(jq -cn --arg d "$minor" --arg p "$php" --arg i "$image:$tag" --arg c "$constraint" \
                 --argjson b "$build" --argjson e "$experimental" \
-                '{drupal:$d, php:$p, image:$i, build:$b, experimental:$e}')")
+                '{drupal:$d, php:$p, image:$i, constraint:$c, build:$b, experimental:$e}')")
             done
           done <<<"$plan"
 
@@ -179,7 +191,7 @@ jobs:
         run: |
           docker build \
             --tag "${{ matrix.image }}" \
-            --build-arg "DRUPAL_VERSION=${{ matrix.drupal }}.x" \
+            --build-arg "DRUPAL_VERSION=${{ matrix.constraint }}" \
             --build-arg "PHP_VERSION=${{ matrix.php }}" \
             "https://github.com/Islandora/islandora_ci.git#main"
 
