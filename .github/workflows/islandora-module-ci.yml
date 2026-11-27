@@ -6,9 +6,9 @@ name: Islandora Module CI
 #   - minors: the `minors_per_major` newest minors of each major with a stable
 #     release. A major with no stable release yet (the next major) gets its
 #     newest branch, non-blocking (`include_next_major`)
-#   - PHP: the lowest and the highest version that ghcr.io/islandora/ci is
-#     built for, from the minor's minimum (core/composer.json) up to the newest
-#     PHP that Drupal core's own CI tests on that branch (.gitlab-ci.yml)
+#   - PHP: every version that ghcr.io/islandora/ci is built for, from the
+#     minor's minimum (core/composer.json) up to the newest PHP that Drupal
+#     core's own CI tests on that branch (.gitlab-ci.yml)
 #   - image: ghcr.io/islandora/ci:<minor>-php<php>; when Islandora hasn't
 #     published that tag yet, the job builds it from Islandora's Dockerfile
 
@@ -43,7 +43,7 @@ on:
         required: false
         type: string
         default: ''
-        description: 'Override: JSON array of PHP versions (e.g. ''["8.4"]''). Empty = lowest and highest each minor allows'
+        description: 'Override: JSON array of PHP versions (e.g. ''["8.4"]''). Empty = every version each minor allows'
       repository:
         required: false
         type: string
@@ -132,7 +132,7 @@ jobs:
                 function v(x, p) { split(x, p, "."); return p[1] * 1000 + p[2] }
                 v($0) >= v(lo) && v($0) <= v(hi)' <<<"$image_php")
               [ -n "$allowed" ] || allowed=$min_php
-              phps=$( (head -n1 <<<"$allowed"; tail -n1 <<<"$allowed") | sort -uV )
+              phps=$allowed
             fi
             for php in $phps; do
               tag="${minor}-php${php}"

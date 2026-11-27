@@ -38,7 +38,7 @@ The matrix is computed on every run, so a new Drupal or PHP release needs no cha
 * **Drupal majors:** every major that drupal.org lists as supported (`supported_branches` in `https://updates.drupal.org/release-history/drupal/current`). A major drops out when drupal.org stops supporting it.
 * **Drupal minors:** the `minors_per_major` newest minors of each of those majors that have a stable release.
 * **Next major:** a supported major with no stable release yet gets its newest branch (e.g. `12.0` while Drupal 12 is in beta). Its jobs are **non-blocking**: a failure shows as a warning, not a red check. It becomes blocking by itself once its first stable release is out. Turn it off with `include_next_major: false`.
-* **PHP:** the lowest and the highest version that `ghcr.io/islandora/ci` is built for, between the minor's minimum (`core/composer.json`) and the newest PHP that Drupal core's own CI tests on that branch (its `.gitlab-ci.yml`). `composer.json` has no upper bound, and e.g. Drupal 10 fails on PHP 8.5. Today: 10.x on 8.3 and 8.4, 11.x on 8.3 and 8.5, 12.0 on 8.5.
+* **PHP:** every version that `ghcr.io/islandora/ci` is built for, between the minor's minimum (`core/composer.json`) and the newest PHP that Drupal core's own CI tests on that branch (its `.gitlab-ci.yml`). `composer.json` has no upper bound, and e.g. Drupal 10 fails on PHP 8.5. Today: 10.x on 8.3 and 8.4, 11.x on 8.3, 8.4 and 8.5, 12.0 on 8.5 (11 jobs per module).
 * **Image:** `ghcr.io/islandora/ci:<minor>-php<php>`. When Islandora hasn't published that tag yet (typically the next major), the job builds it from [Islandora/islandora_ci](https://github.com/Islandora/islandora_ci)'s Dockerfile (from the `<minor>.x-dev` branch for a major without a stable release), which adds a few minutes. If that build fails, a next-major job reports it as a warning. It switches to the published image as soon as one exists.
 
 The run's summary page shows the computed matrix.
@@ -49,7 +49,7 @@ The run's summary page shows the computed matrix.
 * `minors_per_major` (Optional, default `2`) How many of the newest released minors of each supported major to test.
 * `include_next_major` (Optional, default `true`) Also test the next major before its first stable release (non-blocking).
 * `drupal_versions` (Optional, default empty) Override: JSON array of Drupal minors, e.g. `'["10.6"]'`. Empty means computed as above.
-* `php_versions` (Optional, default empty) Override: JSON array of PHP versions, e.g. `'["8.4"]'`. Empty means the lowest and highest each minor allows.
+* `php_versions` (Optional, default empty) Override: JSON array of PHP versions, e.g. `'["8.4"]'`. Empty means every version each minor allows.
 * `repository`, `ref` (Optional, default empty) Test another repository (`owner/name`) at a branch, tag or SHA instead of the calling one. Used by the weekly run.
 * `timeout_minutes` (Optional, default `30`) Timeout for each job.
 
