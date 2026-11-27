@@ -1,5 +1,17 @@
 name: Islandora Module CI
 
+# The Drupal x PHP matrix is computed on every run, so new Drupal releases are
+# picked up without editing this file:
+#   - majors: every major drupal.org lists in supported_branches
+#   - minors: the `minors_per_major` newest minors of each major with a stable
+#     release. A major with no stable release yet (the next major) gets its
+#     newest branch, non-blocking (`include_next_major`)
+#   - PHP: every version that ghcr.io/islandora/ci is built for, from the
+#     minor's minimum (core/composer.json) up to the newest PHP that Drupal
+#     core's own CI tests on that branch (.gitlab-ci.yml)
+#   - image: ghcr.io/islandora/ci:<minor>-php<php>; when Islandora hasn't
+#     published that tag yet, the job builds it from Islandora's Dockerfile
+
 on:
   workflow_call:
     inputs:
@@ -12,16 +24,36 @@ on:
         type: boolean
         default: false
         description: "Start the Chromedriver container. Only FunctionalJavascript tests need it."
+      minors_per_major:
+        required: false
+        type: number
+        default: 2
+        description: "How many of the newest released minors of each supported Drupal major to test"
+      include_next_major:
+        required: false
+        type: boolean
+        default: true
+        description: "Also test the next Drupal major before its first stable release (non-blocking)"
       drupal_versions:
         required: false
         type: string
-        default: '["10.6", "11.3"]'
-        description: 'JSON array of Drupal minor versions; each needs a ghcr.io/islandora/ci tag (e.g., ''["11.3"]'')'
+        default: ''
+        description: 'Override: JSON array of Drupal minors (e.g. ''["10.6"]''). Empty = computed from drupal.org'
       php_versions:
         required: false
         type: string
-        default: '["8.3", "8.4"]'
-        description: 'JSON array of PHP versions; each needs a ghcr.io/islandora/ci tag (e.g., ''["8.4"]'')'
+        default: ''
+        description: 'Override: JSON array of PHP versions (e.g. ''["8.4"]''). Empty = every version each minor allows'
+      repository:
+        required: false
+        type: string
+        default: ''
+        description: "Module repository to test (owner/name). Empty = the calling repository"
+      ref:
+        required: false
+        type: string
+        default: ''
+        description: "Branch, tag or SHA of `repository`. Empty = the triggering ref (or the default branch)"
       timeout_minutes:
         required: false
         type: number
@@ -33,30 +65,135 @@ permissions:
   contents: read
 
 # The group name is specific to this workflow so it can't collide with a
-# concurrency group the caller defines (identical groups deadlock). Only PR
-# runs are cancelled; every push to a branch still gets a result.
+# concurrency group the caller defines (identical groups deadlock). It includes
+# the tested repository, because one caller (the weekly run) tests many
+# modules at once. Only PR runs are cancelled; every push still gets a result.
 concurrency:
-  group: islandora-module-ci-${{ github.repository }}-${{ github.ref }}
+  group: islandora-module-ci-${{ inputs.repository || github.repository }}-${{ inputs.ref || github.ref }}
   cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  matrix:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    outputs:
+      matrix: ${{ steps.compute.outputs.matrix }}
+    steps:
+      - name: Compute Drupal x PHP matrix
+        id: compute
+        env:
+          MINORS_PER_MAJOR: ${{ inputs.minors_per_major }}
+          INCLUDE_NEXT_MAJOR: ${{ inputs.include_next_major }}
+          DRUPAL_VERSIONS: ${{ inputs.drupal_versions }}
+          PHP_VERSIONS: ${{ inputs.php_versions }}
+        run: |
+          set -euo pipefail
+          image=ghcr.io/islandora/ci
+          fetch() { curl -fsSL --retry 3 --retry-all-errors "$@"; }
+
+          feed=$(fetch https://updates.drupal.org/release-history/drupal/current)
+          supported=$(sed -n 's:.*<supported_branches>\(.*\)</supported_branches>.*:\1:p' <<<"$feed" | tr ',' '\n' | sed 's/\.$//' | grep .)
+          releases=$(grep -oE '<version>[0-9]+\.[0-9]+\.[0-9]+[^<]*</version>' <<<"$feed" | sed -E 's:</?version>::g')
+
+          token=$(fetch "https://ghcr.io/token?scope=repository:islandora/ci:pull" | jq -r .token)
+          tags=$(fetch -H "Authorization: Bearer $token" "https://ghcr.io/v2/islandora/ci/tags/list?n=1000" \
+            | jq -r '.tags[]' | grep -E '^[0-9]+\.[0-9]+-php[0-9]+\.[0-9]+$' || true)
+          image_php=$(awk -F-php '{print $2}' <<<"$tags" | sort -uV)
+
+          # One line per Drupal minor: "<minor> <experimental>"
+          if [ -n "$DRUPAL_VERSIONS" ]; then
+            plan=$(jq -r '.[] | "\(.) false"' <<<"$DRUPAL_VERSIONS")
+          else
+            plan=""
+            while read -r major; do
+              stable=$(grep -E "^${major}\.[0-9]+\.[0-9]+$" <<<"$releases" | cut -d. -f1,2 | sort -uVr | head -n "$MINORS_PER_MAJOR" || true)
+              if [ -n "$stable" ]; then
+                plan+=$(awk '{print $0 " false"}' <<<"$stable")$'\n'
+              elif [ "$INCLUDE_NEXT_MAJOR" = true ]; then
+                plan+="$(grep -E "^${major}\." <<<"$supported" | sort -Vr | head -n1) true"$'\n'
+              fi
+            done < <(cut -d. -f1 <<<"$supported" | sort -un)
+          fi
+
+          rows=()
+          while read -r minor experimental; do
+            [ -n "$minor" ] || continue
+            if [ -n "$PHP_VERSIONS" ]; then
+              phps=$(jq -r '.[]' <<<"$PHP_VERSIONS")
+            else
+              # Lowest: the minor's composer.json. Highest: the newest PHP in
+              # core's own CI jobs for the branch ("... PHP 8.4 MySQL ..."), since
+              # composer.json has no upper bound (Drupal 10 breaks on PHP 8.5).
+              min_php=$(fetch "https://git.drupalcode.org/project/drupal/-/raw/${minor}.x/core/composer.json" \
+                | jq -r '.require.php' | grep -oE '[0-9]+\.[0-9]+' | head -n1)
+              max_php=$(fetch "https://git.drupalcode.org/project/drupal/-/raw/${minor}.x/.gitlab-ci.yml" \
+                | grep -oE "^'[^']*PHP [0-9]+\.[0-9]+" | grep -oE '[0-9]+\.[0-9]+$' | sort -uV | tail -n1 || true)
+              allowed=$(awk -v lo="$min_php" -v hi="${max_php:-99.99}" '
+                function v(x, p) { split(x, p, "."); return p[1] * 1000 + p[2] }
+                v($0) >= v(lo) && v($0) <= v(hi)' <<<"$image_php")
+              [ -n "$allowed" ] || allowed=$min_php
+              phps=$allowed
+            fi
+            for php in $phps; do
+              tag="${minor}-php${php}"
+              build=true
+              if grep -qx "$tag" <<<"$tags"; then build=false; fi
+              # Composer constraint for building the image: "12.0.x" only matches
+              # stable releases, so a major without one needs its dev branch.
+              constraint="${minor}.x"
+              if [ "$experimental" = true ]; then constraint="${minor}.x-dev"; fi
+              rows+=("$(jq -cn --arg d "$minor" --arg p "$php" --arg i "$image:$tag" --arg c "$constraint" \
+                --argjson b "$build" --argjson e "$experimental" \
+                '{drupal:$d, php:$p, image:$i, constraint:$c, build:$b, experimental:$e}')")
+            done
+          done <<<"$plan"
+
+          [ "${#rows[@]}" -gt 0 ] || { echo "::error::Computed an empty Drupal x PHP matrix"; exit 1; }
+          matrix=$(printf '%s\n' "${rows[@]}" | jq -sc '{include: .}')
+          echo "matrix=$matrix" >> "$GITHUB_OUTPUT"
+          {
+            echo "| Drupal | PHP | Image | Blocking |"
+            echo "| --- | --- | --- | --- |"
+            jq -r '.include[] | "| \(.drupal) | \(.php) | \(.image)\(if .build then " (built in the job)" else "" end) | \(if .experimental then "no (next major)" else "yes" end) |"' <<<"$matrix"
+          } >> "$GITHUB_STEP_SUMMARY"
+
   build:
+    needs: matrix
     runs-on: ubuntu-24.04
     timeout-minutes: ${{ inputs.timeout_minutes }}
     strategy:
       fail-fast: false
-      matrix:
-        php_versions: ${{ fromJSON(inputs.php_versions) }}
-        drupal_versions: ${{ fromJSON(inputs.drupal_versions) }}
+      matrix: ${{ fromJSON(needs.matrix.outputs.matrix) }}
 
-    name: PHP ${{ matrix.php_versions }} | Drupal ${{ matrix.drupal_versions }}
+    name: PHP ${{ matrix.php }} | Drupal ${{ matrix.drupal }}${{ matrix.experimental && ' (next major, non-blocking)' || '' }}
 
     env:
       ENABLE_MODULES: ${{ inputs.module_name }}
 
     steps:
       - name: Checkout code
+        if: ${{ inputs.repository == '' }}
         uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+
+      - name: Checkout ${{ inputs.repository }}
+        if: ${{ inputs.repository != '' }}
+        uses: actions/checkout@8e8c483db84b4bee98b60c0593521ed34d9990e8 # v6
+        with:
+          repository: ${{ inputs.repository }}
+          ref: ${{ inputs.ref }}
+
+      # Next-major steps may fail without failing the job: the "Next major"
+      # step below turns a failure into a warning instead.
+      - name: Build CI image (not published for this pair yet)
+        id: image
+        if: ${{ matrix.build }}
+        continue-on-error: ${{ matrix.experimental }}
+        run: |
+          docker build \
+            --tag "${{ matrix.image }}" \
+            --build-arg "DRUPAL_VERSION=${{ matrix.constraint }}" \
+            --build-arg "PHP_VERSION=${{ matrix.php }}" \
+            "https://github.com/Islandora/islandora_ci.git#main"
 
       - name: Create docker network
         run: docker network create ci-default
@@ -71,6 +208,9 @@ jobs:
             chromedriver --log-path=/dev/null --verbose --allowed-ips= --allowed-origins=*
 
       - name: PHPUnit tests
+        id: tests
+        if: ${{ steps.image.outcome != 'failure' }}
+        continue-on-error: ${{ matrix.experimental }}
         run: |
           docker run \
             --rm \
@@ -79,4 +219,37 @@ jobs:
             --volume "$PWD:/var/www/drupal/web/modules/contrib/$ENABLE_MODULES:ro" \
             --env ENABLE_MODULES \
             --network ci-default \
-            "ghcr.io/islandora/ci:${{ matrix.drupal_versions }}-php${{ matrix.php_versions }}"
+            "${{ matrix.image }}"
+
+      - name: Next major
+        if: ${{ matrix.experimental }}
+        env:
+          IMAGE_OUTCOME: ${{ steps.image.outcome }}
+          TESTS_OUTCOME: ${{ steps.tests.outcome }}
+        run: |
+          if [ "$IMAGE_OUTCOME" = failure ]; then
+            msg="Drupal ${{ matrix.drupal }}: the CI image could not be built yet (non-blocking)."
+          elif [ "$TESTS_OUTCOME" = failure ]; then
+            msg="Drupal ${{ matrix.drupal }}: tests failed (non-blocking until its first stable release)."
+          else
+            msg="Drupal ${{ matrix.drupal }}: passed."
+          fi
+          echo "::warning title=Next Drupal major::$msg"
+          echo "$msg" >> "$GITHUB_STEP_SUMMARY"
+
+  # One check with a fixed name. Require this one in branch protection rather
+  # than the matrix jobs, whose names change whenever a Drupal minor is added
+  # or dropped.
+  result:
+    needs: [matrix, build]
+    if: ${{ always() }}
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - name: All blocking jobs passed
+        env:
+          MATRIX_RESULT: ${{ needs.matrix.result }}
+          BUILD_RESULT: ${{ needs.build.result }}
+        run: |
+          echo "matrix: $MATRIX_RESULT, build: $BUILD_RESULT"
+          [ "$MATRIX_RESULT" = success ] && [ "$BUILD_RESULT" = success ]
